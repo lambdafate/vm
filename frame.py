@@ -29,7 +29,7 @@ class Frame(object):
         args = []
         for _ in range(n):
             args.append(self.pop())
-        return args[-1:]
+        return args[::-1]
         
     def set_locals(self, locals):
         self.locals = locals
