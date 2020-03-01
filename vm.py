@@ -2,6 +2,7 @@ from instype import *
 from frame import Frame
 import dis
 import copy
+import pysnooper
 
 class VM(object):
     def __init__(self):
@@ -77,6 +78,7 @@ class VM(object):
         self.frame.push(tos+tos1)
         self.frame.incpc()
 
+
     def return_value(self):
         """
             有两种return类型, 1.自定义函数 return to Module/函数帧 2.Module帧向上返回
@@ -120,6 +122,7 @@ class VM(object):
         self.frame.push(frame)
         self.frame.incpc()
 
+    # @pysnooper.snoop()
     def call_function(self, arg):
         args = self.frame.popn(arg)
         func = self.frame.pop()             # frame对象 或者 builtin
@@ -133,7 +136,10 @@ class VM(object):
             # 不在这里使pc指向下一条指令, 在frame返回, 即执行return_value时, 指向下一条指令
             # self.frame.incpc()
             # 使用深拷贝的对象, 不使用func, func相当于原始数据, 不能修改, 否则下次调用会出错
-            self.push_frame(copy.deepcopy(func))
+            frame = copy.deepcopy(func)
+            temp = { key:value for key, value in zip(frame.varnames, args)}
+            frame.set_locals(temp)
+            self.push_frame(frame)
 
     def compare_op(self, arg):
         op = dis.cmp_op[arg]
@@ -164,11 +170,11 @@ if __name__ == "__main__":
     from convert import parser
 
     source = """
-def demo():
-    a = 2
-    return a
+def demo(a, c):
+    b = 2 + a + c
+    return b
 
-x = demo() + demo()
+x = demo(1, 2) + demo(2,1)
 print(x)
 """
     
