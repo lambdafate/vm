@@ -8,27 +8,33 @@ argument 源代码字符串
 Return: 包含codeobject属性的字典
 """
 
-
 def parser(source):
     bytecode = dis.Bytecode(source)
     instructions = turnins(list(bytecode))
 
     codeobject = bytecode.codeobj
     # 获取常量表和变量名表
-    consts = codeobject.co_consts
-    names = codeobject.co_names
-
     codeinfo = {
-        "consts": consts,
-        "names": names,
+        "consts": codeobject.co_consts,
+        "names": codeobject.co_names,
+        "varnames": codeobject.co_varnames,
         "instructions": instructions
     }
-
+    codeinfo["consts"] = parse_to_codeinfo(codeinfo.get("consts"))
     return codeinfo
 
+def parse_to_codeinfo(consts):
+    temp = []
+    for const in consts:
+        if isinstance(const, type(parse_to_codeinfo.__code__)):
+            temp.append(parser(const))
+        else:
+            temp.append(const)
+    return temp
 
 def turnins(bytecodes):
-    instructions = [Instruction(bytecode.opname, bytecode.arg) for bytecode in bytecodes]
+    instructions = [Instruction(bytecode.opname, bytecode.arg)
+                    for bytecode in bytecodes]
     targets = _findall_target(bytecodes)
     # print(f"target: {targets}")
     for offset, index in targets:
@@ -53,25 +59,28 @@ def _findall_jmp(bytecodes, offset):
             jmps.append(index)
         elif bytecode.argval == offset and isjrel(bytecode.opname):
             jmps.append(index)
-        
+
     return jmps
 
 # 找到所有jmp_target的bytecode
 def _findall_target(bytecodes):
-    targets = [(bytecode.offset, bytecodes.index(bytecode)) for bytecode in bytecodes if bytecode.is_jump_target]
+    targets = [(bytecode.offset, bytecodes.index(bytecode))
+               for bytecode in bytecodes if bytecode.is_jump_target]
     return targets
 
 
 if __name__ == "__main__":
     source = """
-if 3 > 2:
-    print("bigger!")
-else:
-    print("small!")
+def demo():
+    b = 1
+    return b
+print("Hello")
+demo(5)
     """
     res = parser(source)
     for index, ins in enumerate(res.get("instructions")):
         print(f"{index} : {ins}")
     print("\n")
     dis.dis(source)
-    
+
+    print(res.get("consts")[0])
