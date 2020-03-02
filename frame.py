@@ -34,6 +34,9 @@ class Frame(object):
     def set_locals(self, locals):
         self.locals = locals
     
+    def set_globals(self, globals):
+        self.globals = globals
+    
     def notfinish(self):
         return self.pc < len(self.instructions)
     
