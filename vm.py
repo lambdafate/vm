@@ -46,7 +46,7 @@ class VM(object):
 
             bytecode = ins.opname.lower()
             if not hasattr(self, bytecode):
-                raise Exception(f"not found function: {bytecode}, pc={self.frame.pc}")
+                raise Exception(f"unsupport bytecode: {bytecode}, pc={self.frame.pc}")
                 
             func = getattr(self, bytecode)
             # 在每条指令执行之前, 解析出指令参数对应的真实值
@@ -70,6 +70,12 @@ class VM(object):
         arg1 = self.frame.pop()
         arg2 = self.frame.pop()
         self.frame.push(arg1+arg2)
+        self.frame.incpc()
+    
+    def binary_subtract(self):
+        arg1 = self.frame.pop()
+        arg2 = self.frame.pop()
+        self.frame.push(arg2-arg1)
         self.frame.incpc()
     
     def inplace_add(self):
@@ -114,6 +120,15 @@ class VM(object):
         varname = self.frame.varnames[arg]
         self.frame.locals[varname] = value
         self.frame.incpc()
+    
+    def load_global(self, arg):
+        # print(f"\nload_global: {arg}\n")
+        self.frame.push(self.frame.globals.get(arg, arg))
+        self.frame.incpc()
+
+    def store_global(self, arg):
+        self.frame.globals[arg] = self.frame.pop()
+        self.frame.incpc()
 
     def make_function(self, arg):
         funcname = self.frame.pop()
@@ -128,7 +143,7 @@ class VM(object):
         func = self.frame.pop()             # frame对象 或者 builtin
         if func == "print":
             for arg in args:
-                print(arg, end="")
+                print(arg)
             self.frame.push(None)
             self.frame.incpc()
         
@@ -139,6 +154,7 @@ class VM(object):
             frame = copy.deepcopy(func)
             temp = { key:value for key, value in zip(frame.varnames, args)}
             frame.set_locals(temp)
+            frame.set_globals(self.globals)
             self.push_frame(frame)
 
     def compare_op(self, arg):
@@ -148,8 +164,18 @@ class VM(object):
         left  = self.frame.pop()
         if op == "<":
             res = left < right
+        elif op == "<=":
+            res = left <= right
+        elif op == "==":
+            res = left == right
         elif op == ">":
             res = left > right
+        elif op == ">=":
+            res = left >= right
+        elif op == "!=":
+            res = left != right
+        else:
+            raise Exception(f"unsupport op -> {op}")
         self.frame.push(res)
         self.frame.incpc()
     
@@ -170,12 +196,20 @@ if __name__ == "__main__":
     from convert import parser
 
     source = """
-def demo(a, c):
-    b = 2 + a + c
+a = 12
+def demo(b):
+    global a
+    a = b + b
     return b
 
-x = demo(1, 2) + demo(2,1)
-print(x)
+def rec(n):
+    if n < 2:
+        return n
+    return n + rec(n-1)
+
+demo(2)
+print(a)
+print(rec(100))
 """
     
     codeinfo = parser(source)
@@ -186,6 +220,9 @@ print(x)
 
     # dis.dis(source)
 
+    # print(codeinfo.get("consts"))
+    # print(codeinfo.get("names"))
+    
     vm = VM()
     vm.run(codeinfo)
 
